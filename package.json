@@ -2,8 +2,8 @@
   "name": "spellcheckvars",
   "version": "0.0.2",
   "description": "Experiment to spell check variables and identifiers on javascript",
-  "main": "spellcheck-lib.js",
-  "bin": "spellchecklint-cli.js",
+  "main": "lintspell-lib.js",
+  "bin": "lintspell-cli.js",
   "scripts": {
     "test": "mocha test"
   },
