@@ -112,9 +112,9 @@ SpellChecking.prototype.filterNode = function(aNode, index) {
 };
 
 SpellChecking.prototype.errorFor = function(aNode, aResult, aWord) {
-    var subwordMessage = aNode.name !== aWord ? ' mispelled: ' + aWord.bold : '';
+    var subwordMessage = aNode.name !== aWord ? ' misspelled: ' + aWord.bold : '';
     return {
-        message: 'You have a mispelled ' + 'Identifier '.cyan  + aNode.name.bold + subwordMessage,
+        message: 'You have a misspelled ' + 'Identifier '.cyan  + aNode.name.bold + subwordMessage,
         line: aNode.loc.start.line
     };
 };
