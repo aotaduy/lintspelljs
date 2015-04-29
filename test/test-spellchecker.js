@@ -2,7 +2,7 @@ var chai = require('chai');
 var expect = chai.expect;
 
 describe('JSSpellChecker', function() {
-    var spellCheckerLib = require('../spellcheck-lib.js');
+    var spellCheckerLib = require('../lintspell-lib.js');
     var spellChecker = new spellCheckerLib.JsSpellChecker();
     describe('check identifiers', function() {
         it('should detect spelling errors on identifiers', function() {
