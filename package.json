@@ -1,5 +1,5 @@
 {
-  "name": "spellcheckvars",
+  "name": "lintspelljs",
   "version": "0.0.2",
   "description": "Experiment to spell check variables and identifiers on javascript",
   "main": "lintspell-lib.js",
