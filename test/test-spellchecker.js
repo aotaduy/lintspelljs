@@ -32,12 +32,22 @@ describe('JSSpellChecker', function() {
             expect(result).to.be.an('Array');
             expect(result).to.have.length(0);
         });
-        it('should detect spelling errors on comments', function() {
+        it('should detect spelling errors on line comments', function() {
             var result = spellChecker.checkString('var variable = 1 + 1; // variavle = variavle + 1');
             expect(result).to.be.an('Array');
             expect(result).to.have.length(2);
             expect(result[0]).to.have.property('message');
             expect(result[0]).to.have.property('line');
+        });
+        it('should detect spelling errors on multiline comments', function() {
+            var code = 'var variable = 1 + 1; /* variavle = variavle + 1 \
+                * tsih is a tset \
+                ******************* */';
+            var result = spellChecker.checkString(code);
+            expect(result).to.be.an('Array');
+            expect(result).to.have.length(4);
+            expect(result[3]).to.have.property('line');
+            expect(result[3].line).to.equal(1);
         });
         it('should detect spelling errors on Strings', function() {
             var result = spellChecker.checkString('var variable = "This si a tset";');

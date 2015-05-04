@@ -11,7 +11,6 @@
   "license": "MIT",
   "dependencies": {
     "colors": "^1.0.3",
-    "commander": "^2.7.0",
     "esprima": "^2.0.0",
     "esquery": "^0.3.0",
     "globals": "^6.4.1",

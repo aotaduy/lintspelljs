@@ -20,5 +20,5 @@ if (process.argv.length > 2) {
     });
 } else {
     console.log('spellcheckvars Checks spelling on js files');
-    console.log('Usage spellcheckvars %s',  '<file>'.green);
+    console.log('Usage spellcheckvars %s', '<file>'.green);
 }
