@@ -1,6 +1,6 @@
 {
   "name": "lintspelljs",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Library to spell check variables and identifiers on javascript",
   "main": "lintspell-lib.js",
   "bin": "lintspell-cli.js",
