@@ -1,6 +1,6 @@
 {
   "name": "lintspelljs",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Library to spell check variables and identifiers on javascript",
   "main": "lintspell-lib.js",
   "bin": "lintspell-cli.js",
@@ -9,7 +9,7 @@
   },
   "repository": {
      "type": "git",
-     "url": "https://github.com/aotaduy/lintint.git"
+     "url": "https://github.com/aotaduy/lintspelljs.git"
  },
   "author": "Andres Otaduy <andreseninternet@hotmail.com",
   "license": "MIT",
