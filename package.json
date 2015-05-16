@@ -7,6 +7,10 @@
   "scripts": {
     "test": "mocha test"
   },
+  "repository": {
+     "type": "git",
+     "url": "https://github.com/aotaduy/lintint.git"
+ },
   "author": "Andres Otaduy <andreseninternet@hotmail.com",
   "license": "MIT",
   "dependencies": {
