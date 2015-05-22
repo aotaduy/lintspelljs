@@ -7,8 +7,7 @@ lintspelljs checks inside your comments, strings, and on each part of the identi
 The package is not published yet to npm but there is a plan to do so.
 To insall you should clone this repo and then npm install it directly from the folder.
 ````
-git clone https://github.com/aotaduy/lintspelljs.git
-npm install ./lintspelljs
+npm install lintspelljs
 ````
 
 ## Usage
@@ -24,7 +23,7 @@ You have a misspelled word on a String spellcheckvars On Line: 23
 You have a misspelled word on a Comment spellcheckvars On Line: 24
 ````
 ## Usage as a module
-lintspelljs could be used as a module to check js files.
+lintspelljs could be used as a module to check js files. Check lintint (https://www.npmjs.com/package/lintint) for an example of usage.
 ````javascript
 var spellCheckerLib = require('lintspelljs');
 var spellChecker = new spellCheckerLib.JsSpellChecker();
