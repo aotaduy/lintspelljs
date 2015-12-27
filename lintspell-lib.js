@@ -10,12 +10,21 @@ var skipWords = require('./skipwords.js');
  *
  * @return {Object}
  */
-function JsSpellChecker() {
-    this.checks = [
-        new SpellChecking(),
-        new SpellCheckingStrings(),
-        new SpellCheckingComments()
-    ];
+function JsSpellChecker (config) {
+    this.config = _.defaults({}, config, {
+        'checkers': ['identifier', 'string', 'comment']
+    });
+
+    this.checks = [];
+    if (_.contains(this.config.checkers, 'identifier')) {
+        this.checks.push(new SpellCheckingIdentifier(this.config));
+    }
+    if (_.contains(this.config.checkers, 'string')) {
+        this.checks.push(new SpellCheckingStrings(this.config));
+    }
+    if (_.contains(this.config.checkers, 'comment')) {
+        this.checks.push(new SpellCheckingComments(this.config));
+    }
 }
 JsSpellChecker.prototype = Object.create({});
 
@@ -26,31 +35,35 @@ JsSpellChecker.prototype = Object.create({});
  * @param  {type} aString javascript source code
  * @return {Boolean} returns true whether if there are no spelling erros
  */
-JsSpellChecker.prototype.checkString = function(aString) {
-    var tree ;
+JsSpellChecker.prototype.checkString = function (aString) {
+    var tree;
     var answer = [];
     try {
-        tree = esprima.parse(aString, {loc: true, comment:true});
+        tree = esprima.parse(aString, {loc: true, comment: true});
     } catch (e) {
         answer.push({
             message: 'Can\'t check spelling - Esprima parser error: '.red.bold + e.description,
-            line: e.lineNumber});
+            line: e.lineNumber
+        });
         return answer;
-    };
+    }
 
     this.checks.forEach(function(spellchecking) {
         var checksTree = spellchecking.checkOnTree(tree);
-        checksTree.forEach(function(each) {
-
-            answer.push(each);
-        });
+        answer = _.union(answer, checksTree);
     });
     return answer;
 };
-module.exports.JsSpellChecker =  JsSpellChecker;
+module.exports.JsSpellChecker = JsSpellChecker;
 
-function SpellChecking() {
+function SpellChecking (config) {
     this.checkingPath = 'Identifier';
+    this.config = _.defaults({}, config, {
+        'color': true,
+        'hideSuccessful': true,
+        'skipWords': []
+    });
+    this.config.skipWords = _.union(this.config.skipWords, skipWords);
     return this;
 }
 
@@ -60,21 +73,26 @@ function SpellChecking() {
  * @param  {Object} aTree AST from esprima
  * @return {Boolean}       returns true whether if there are no spelling erros
  */
-SpellChecking.prototype.checkOnTree = function(aTree) {
+SpellChecking.prototype.checkOnTree = function (aTree) {
     var self = this;
     var checks = [];
     self.getNodesFromTree(aTree)
-        .filter(function(each) {
+        .filter(function (each) {
             return self.filterNode(each);
         })
-        .forEach(function(aNode) {
+        .forEach(function (aNode) {
             var words = self.getNodeWords(aNode).split(' ');
-            words.forEach(function(aWord) {
-                if (!spell.check(aWord)) {
-                    checks.push(self.errorFor(aNode, 0, aWord));
-                    //self.showErrorFor(aNode, 0, aWord);
-                }
-            });
+            _(words)
+                .compact()
+                .forEach(function (aWord) {
+                    if (!spell.check(aWord)) {
+                        checks.push(self.errorFor(aNode, 0, aWord));
+                        //self.showErrorFor(aNode, 0, aWord);
+                    } else if (!self.config.hideSuccessful) {
+                        checks.push(self.successFor(aNode, 0, aWord));
+                    }
+                })
+                .value();
         });
     return checks;
 };
@@ -84,8 +102,17 @@ SpellChecking.prototype.checkOnTree = function(aTree) {
  * @param  {type} aNode AST Node
  * @return {[String]}   List of words to be check
  */
-SpellChecking.prototype.getNodeWords = function(aNode) {
-    return aNode.name.replace(/([A-Z])/g, ' $1').replace(/[^a-zA-Z ]/g, ' ');
+SpellChecking.prototype.getNodeWords = function (aNode) {
+    return this.normalizeWords(aNode.name);
+};
+
+/**
+ * SpellChecking.prototype.normalizeWords - Returns a list of words from a camelCased, snakedCased or kebabCased expression
+ * @param  {string} aWord Word to normalize
+ * @return {[String]}   List of words to be check
+ */
+SpellChecking.prototype.normalizeWords = function (aWord) {
+    return aWord.replace(/([A-Z])/g, ' $1').replace(/[^a-zA-Z ]/g, ' ').trim().toLowerCase();
 };
 
 /**
@@ -94,7 +121,7 @@ SpellChecking.prototype.getNodeWords = function(aNode) {
  * @param  {Object} aTree AST Tree
  * @return {[Object]} List of nodes for this rule
  */
-SpellChecking.prototype.getNodesFromTree = function(aTree) {
+SpellChecking.prototype.getNodesFromTree = function (aTree) {
     return esquery(aTree, this.checkingPath);
 };
 
@@ -105,27 +132,49 @@ SpellChecking.prototype.getNodesFromTree = function(aTree) {
  * @param  {type} index
  * @return {Boolean} true if the node has to be check on this rule
  */
-SpellChecking.prototype.filterNode = function(aNode, index) {
-    return _.intersection(skipWords,
-        this.getNodeWords(aNode).split(' ')
-    ).length === 0;
+SpellChecking.prototype.filterNode = function (aNode, index) {
+    return _.intersection(this.config.skipWords,
+            this.getNodeWords(aNode).split(' ')
+        ).length === 0;
 };
 
-SpellChecking.prototype.errorFor = function(aNode, aResult, aWord) {
-    var subwordMessage = aNode.name !== aWord ? ' misspelled: ' + aWord.bold : '';
+SpellChecking.prototype.resultFor = function (aNode, aResult, aWord) {
     return {
-        message: 'You have a misspelled ' + 'Identifier '.cyan  + aNode.name.bold + subwordMessage,
-        line: aNode.loc.start.line
+        type: this.type,
+        word: aWord,
+        line: aNode.loc.start.line,
+        misspelled: false
     };
+};
+
+SpellChecking.prototype.errorFor = function (aNode, aResult, aWord) {
+    var type = _.capitalize(this.type);
+    var formattedType = this.config.color ? type.cyan : type;
+    var formattedName = this.config.color ? aNode.name.bold : aNode.name;
+
+    var message = 'You have a misspelled ' + formattedType + ' ' + formattedName;
+    if (aNode.name !== aWord) {
+        var formattedWord = this.config.color ? aWord.bold : aWord;
+        message += ' misspelled: ' + formattedWord;
+    }
+    return _.extend(this.resultFor(aNode, aResult, aWord), {
+        message: message,
+        misspelled: true
+    });
+
+};
+SpellChecking.prototype.successFor = function (aNode, aResult, aWord) {
+    return _.extend(this.resultFor(aNode, aResult, aWord), {message: 'No misspelled word'});
 };
 /**
  * SpellCheckingIdentifier - Check Spelling on Identifiers
  *
  * @return {Object}
  */
-function SpellCheckingIdentifier() {
-    SpellChecking.call(this);
+function SpellCheckingIdentifier (config) {
+    SpellChecking.call(this, config);
     this.checkingPath = 'Identifier';
+    this.type = 'identifier';
 }
 SpellCheckingIdentifier.prototype = Object.create(SpellChecking.prototype);
 SpellCheckingIdentifier.prototype.constructor = SpellCheckingIdentifier;
@@ -136,13 +185,13 @@ SpellCheckingIdentifier.prototype.constructor = SpellCheckingIdentifier;
  * @param  {type} index
  * @return {Boolean} true if the node has to be check on this rule
  */
-SpellCheckingIdentifier.prototype.filterNode = function(aNode, index) {
-    if (_.includes(skipWords, aNode.value)) {
+SpellCheckingIdentifier.prototype.filterNode = function (aNode, index) {
+    if (_.includes(this.config.skipWords, aNode.value)) {
         return false;
     } else {
-        return _.intersection(skipWords,
-            this.getNodeWords(aNode).toLowercase().split(' ')
-        ).length === 0;
+        return _.intersection(this.config.skipWords,
+                this.getNodeWords(aNode).split(' ')
+            ).length === 0;
     }
 };
 
@@ -151,9 +200,10 @@ SpellCheckingIdentifier.prototype.filterNode = function(aNode, index) {
  *
  * @return {Object}
  */
-function SpellCheckingStrings() {
-    SpellChecking.call(this);
+function SpellCheckingStrings (config) {
+    SpellChecking.call(this, config);
     this.checkingPath = 'Literal';
+    this.type = 'string';
 }
 SpellCheckingStrings.prototype = Object.create(SpellChecking.prototype);
 SpellCheckingStrings.prototype.constructor = SpellCheckingStrings;
@@ -164,7 +214,7 @@ SpellCheckingStrings.prototype.constructor = SpellCheckingStrings;
  * @return {[String]}   List of words to be check
  */
 SpellCheckingStrings.prototype.getNodeWords = function(aNode) {
-    return aNode.value.replace(/[^a-zA-Z ]/g, ' ').replace(/([A-Z])/g, ' $1');
+    return this.normalizeWords(aNode.value);
 };
 
 SpellCheckingStrings.prototype.errorFor = function(aNode, aResult, aWord) {
@@ -181,7 +231,7 @@ SpellCheckingStrings.prototype.errorFor = function(aNode, aResult, aWord) {
  * @param  {type} index
  * @return {Boolean} true if the node has to be check on this rule
  */
-SpellCheckingStrings.prototype.filterNode = function(aNode) {
+SpellCheckingStrings.prototype.filterNode = function (aNode) {
     return (typeof aNode.value) === 'string' && SpellChecking.prototype.filterNode.call(this, aNode);
 };
 
@@ -190,9 +240,10 @@ SpellCheckingStrings.prototype.filterNode = function(aNode) {
  *
  * @return {Object}
  */
-function SpellCheckingComments() {
-    SpellChecking.call(this);
+function SpellCheckingComments (config) {
+    SpellChecking.call(this, config);
     this.checkingPath = 'Line';
+    this.type = 'comment';
 }
 SpellCheckingComments.prototype = Object.create(SpellCheckingStrings.prototype);
 SpellCheckingComments.prototype.constructor = SpellCheckingComments;
@@ -202,15 +253,21 @@ SpellCheckingComments.prototype.constructor = SpellCheckingComments;
  * @param  {Object} aTree AST Tree
  * @return {[Object]} List of nodes for this rule
  */
-SpellCheckingComments.prototype.getNodesFromTree = function(aTree) {
+SpellCheckingComments.prototype.getNodesFromTree = function (aTree) {
     return aTree.comments;
 };
 
-SpellCheckingComments.prototype.errorFor = function(aNode, aResult, aWord) {
-    return {
-        message: 'You have a misspelled word in a ' + 'Comment '.yellow +  aWord.bold,
-        line: aNode.loc.start.line
-    };
+SpellCheckingComments.prototype.errorFor = function (aNode, aResult, aWord) {
+    var message;
+    if (this.config.color) {
+        message = 'You have a misspelled word on a ' + 'Comment '.yellow + aWord.bold;
+    } else {
+        message = 'You have a misspelled word on a Comment ' + aWord;
+    }
+    return _.extend(this.resultFor(aNode, aResult, aWord), {
+        message: message,
+        misspelled: true
+    });
 };
 /**
  * SpellChecking.prototype.filterNode - Returns true if the node has to be checked on this rule
@@ -219,6 +276,6 @@ SpellCheckingComments.prototype.errorFor = function(aNode, aResult, aWord) {
  * @param  {type} index
  * @return {Boolean} true if the node has to be check on this rule
  */
-SpellCheckingComments.prototype.filterNode = function(aNode) {
+SpellCheckingComments.prototype.filterNode = function (aNode) {
     return SpellChecking.prototype.filterNode.call(this, aNode);
 };
