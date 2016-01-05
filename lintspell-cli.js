@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 var fs = require('fs');
 var colors = require('colors');
 var spellCheckerLib = require('./lintspell-lib.js');

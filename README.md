@@ -26,18 +26,31 @@ You have a misspelled word on a Comment spellcheckvars On Line: 24
 lintspelljs could be used as a module to check js files. Check lintint (https://www.npmjs.com/package/lintint) for an example of usage.
 ````javascript
 var spellCheckerLib = require('lintspelljs');
-var spellChecker = new spellCheckerLib.JsSpellChecker();
-var errors = spellChecker.checkString('var variavle_fisrt = 1 + funktionKall(); // Tetsing');
+var options = {
+    color: false
+};
+var spellChecker = new spellCheckerLib.JsSpellChecker(options);
+var results = spellChecker.checkString('var variavle_fisrt = 1 + funktionKall(); // Tetsing');
 ````
-Errors will contain an Array of Objects with the following format:
+Results will contain an Array of Objects with the following format:
 ````javascript
 {
-    path: <<String>>, // The esquery path used to get the string one of 'Identifier', 'Literal', 'Line'
+    type: <<String>>, // The type of the parsed string (one of 'identifier', 'string', 'comment')
     message: <<String>>, // There are three possible messages
-    line: <<Integer>>
+    line: <<Integer>>, // The line number for the parsed string
+    word: <<String>>, // The word which is checked
+    misspelled: <<Boolean>> // The result of the spell check (true if the word is misspelled) 
 }
 ````
-
+## Default options
+````javascript
+{
+    checkers: ['identifier', 'string', 'comment'], // locations where to check words
+    color: true, // If true, return colored and bold messages
+    hideSuccessful: true, // If true, return only the misspelled results
+    skipWords: [] // Additional words to ignore and do not mark as misspelled 
+}
+````
 ## Test
 lintspelljs uses [mocha](http://www.mochajs.org) for testing and [chai](http://www.chaijs.com) for assertions.
 You should have mocha installed globally to run tests.
