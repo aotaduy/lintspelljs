@@ -45,10 +45,15 @@ Results will contain an Array of Objects with the following format:
 ## Default options
 ````javascript
 {
+    dicts: [{ // Path of dictionaries to use. Can be a string or an object like { aff: <<String>>, dic: <<String>> }
+        aff: 'dicts/en_US.aff',
+        dic: 'dicts/en_US.dic'
+    }],
     checkers: ['identifier', 'string', 'comment'], // locations where to check words
     color: true, // If true, return colored and bold messages
     hideSuccessful: true, // If true, return only the misspelled results
-    skipWords: [] // Additional words to ignore and do not mark as misspelled 
+    skipWords: [], // Additional words to ignore and do not mark as misspelled
+    minLength: 0 // Words with a length less than minLength won't be checked
 }
 ````
 ## Test
