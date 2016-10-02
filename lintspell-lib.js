@@ -3,6 +3,7 @@ var esquery = require('esquery');
 var colors = require('colors');
 var spell = require('./hunspellchecker.js');
 var _ = require('lodash');
+var fs = require('fs');
 var skipWords = require('./skipwords.js');
 
 /**
@@ -11,13 +12,13 @@ var skipWords = require('./skipwords.js');
  * @return {Object}
  */
 function JsSpellChecker (config) {
-    this.config = _.defaults({}, config, {
-        'checkers': ['identifier', 'string', 'comment'],
-        'dicts': [{
-            aff: __dirname + '/dicts/en_US.aff',
-            dic: __dirname + '/dicts/en_US.dic'
-        }]
-    });
+    this.config = _.defaults({}, config, { 'checkers': ['identifier', 'string', 'comment'] });
+    if (_.isEmpty(this.config.dicts)) {
+        this.config.dicts = [{
+            aff: fs.readFileSync(__dirname + '/dicts/en_US.aff'),
+            dic: fs.readFileSync(__dirname + '/dicts/en_US.dic')
+        }];
+    }
 
     var spellChecker = spell(this.config.dicts);
 
@@ -94,7 +95,8 @@ SpellChecking.prototype.checkOnTree = function (aTree) {
                 .compact()
                 .forEach(function (aWord) {
                     // Do not check words that do not match the minimum length
-                    if ((aWord.length >= self.config.minLength) && !self.spell.check(aWord)) {
+                    var aCapitalizedWord = _.capitalize(aWord);
+                    if ((aWord.length >= self.config.minLength) && !self.spell.check(aWord) && !self.spell.check(aCapitalizedWord)) {
                         checks.push(self.errorFor(aNode, 0, aWord));
                         //self.showErrorFor(aNode, 0, aWord);
                     } else if (!self.config.hideSuccessful) {

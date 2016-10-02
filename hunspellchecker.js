@@ -4,7 +4,6 @@ We use 'US'' as  default dictionaries
 
 var Spellchecker = require('hunspell-spellchecker');
 var Dictionary = require('hunspell-spellchecker/lib/dictionary');
-var fs = require('fs');
 var _ = require('lodash');
 
 var MultiDictionary = function(dicts) {
@@ -29,15 +28,7 @@ module.exports = function (dictsConfig) {
     var spellchecker = new Spellchecker();
     var dicts = [];
     _.forEach(dictsConfig, function(dictConfig) {
-        var aff = _.isString(dictConfig) && _.endsWith(dictConfig, 'aff') ? aff : dictConfig.aff;
-        var dic = _.isString(dictConfig) && _.endsWith(dictConfig, 'dic') ? dictConfig : dictConfig.dic;
-        var dict = {};
-        if (!_.isEmpty(aff)) {
-            dict.aff = fs.readFileSync(aff);
-        }
-        if (!_.isEmpty(dic)) {
-            dict.dic = fs.readFileSync(dic);
-        }
+        var dict = _.isPlainObject(dictConfig) ? dictConfig : { dic: dictConfig };
         dicts.push(spellchecker.parse(dict));
     });
     var DICT = new MultiDictionary(dicts);
