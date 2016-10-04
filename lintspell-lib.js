@@ -3,6 +3,7 @@ var esquery = require('esquery');
 var colors = require('colors');
 var spell = require('./hunspellchecker.js');
 var _ = require('lodash');
+var fs = require('fs');
 var skipWords = require('./skipwords.js');
 
 /**
@@ -11,19 +12,25 @@ var skipWords = require('./skipwords.js');
  * @return {Object}
  */
 function JsSpellChecker (config) {
-    this.config = _.defaults({}, config, {
-        'checkers': ['identifier', 'string', 'comment']
-    });
+    this.config = _.defaults({}, config, { 'checkers': ['identifier', 'string', 'comment'] });
+    if (_.isEmpty(this.config.dicts)) {
+        this.config.dicts = [{
+            aff: fs.readFileSync(__dirname + '/dicts/en_US.aff'),
+            dic: fs.readFileSync(__dirname + '/dicts/en_US.dic')
+        }];
+    }
+
+    var spellChecker = spell(this.config.dicts);
 
     this.checks = [];
     if (_.contains(this.config.checkers, 'identifier')) {
-        this.checks.push(new SpellCheckingIdentifier(this.config));
+        this.checks.push(new SpellCheckingIdentifier(spellChecker, this.config));
     }
     if (_.contains(this.config.checkers, 'string')) {
-        this.checks.push(new SpellCheckingStrings(this.config));
+        this.checks.push(new SpellCheckingStrings(spellChecker, this.config));
     }
     if (_.contains(this.config.checkers, 'comment')) {
-        this.checks.push(new SpellCheckingComments(this.config));
+        this.checks.push(new SpellCheckingComments(spellChecker, this.config));
     }
 }
 JsSpellChecker.prototype = Object.create({});
@@ -56,9 +63,11 @@ JsSpellChecker.prototype.checkString = function (aString) {
 };
 module.exports.JsSpellChecker = JsSpellChecker;
 
-function SpellChecking (config) {
+function SpellChecking (spellChecker, config) {
+    this.spell = spellChecker;
     this.checkingPath = 'Identifier';
     this.config = _.defaults({}, config, {
+        'minLength': 0,
         'color': true,
         'hideSuccessful': true,
         'skipWords': []
@@ -77,15 +86,16 @@ SpellChecking.prototype.checkOnTree = function (aTree) {
     var self = this;
     var checks = [];
     self.getNodesFromTree(aTree)
-        .filter(function (each) {
-            return self.filterNode(each);
-        })
         .forEach(function (aNode) {
             var words = self.getNodeWords(aNode).split(' ');
             _(words)
                 .compact()
                 .forEach(function (aWord) {
-                    if (!spell.check(aWord)) {
+                    // Do not check words that do not match the minimum length
+                    var aCapitalizedWord = _.capitalize(aWord);
+                    if ((aWord.length >= self.config.minLength) &&
+                        !_.includes(self.config.skipWords, aWord) && !self.spell.check(aWord) &&
+                        !_.includes(self.config.skipWords, aCapitalizedWord) && !self.spell.check(aCapitalizedWord)) {
                         checks.push(self.errorFor(aNode, 0, aWord));
                         //self.showErrorFor(aNode, 0, aWord);
                     } else if (!self.config.hideSuccessful) {
@@ -112,7 +122,7 @@ SpellChecking.prototype.getNodeWords = function (aNode) {
  * @return {[String]}   List of words to be check
  */
 SpellChecking.prototype.normalizeWords = function (aWord) {
-    return aWord.replace(/([A-Z])/g, ' $1').replace(/[^a-zA-Z ]/g, ' ').trim().toLowerCase();
+    return String(aWord).replace(/([A-Z])/g, ' $1').replace(/[^a-zA-Z ]/g, ' ').trim().toLowerCase();
 };
 
 /**
@@ -171,8 +181,8 @@ SpellChecking.prototype.successFor = function (aNode, aResult, aWord) {
  *
  * @return {Object}
  */
-function SpellCheckingIdentifier (config) {
-    SpellChecking.call(this, config);
+function SpellCheckingIdentifier (spellChecker, config) {
+    SpellChecking.call(this, spellChecker, config);
     this.checkingPath = 'Identifier';
     this.type = 'identifier';
 }
@@ -200,8 +210,8 @@ SpellCheckingIdentifier.prototype.filterNode = function (aNode, index) {
  *
  * @return {Object}
  */
-function SpellCheckingStrings (config) {
-    SpellChecking.call(this, config);
+function SpellCheckingStrings (spellChecker, config) {
+    SpellChecking.call(this, spellChecker, config);
     this.checkingPath = 'Literal';
     this.type = 'string';
 }
@@ -240,8 +250,8 @@ SpellCheckingStrings.prototype.filterNode = function (aNode) {
  *
  * @return {Object}
  */
-function SpellCheckingComments (config) {
-    SpellChecking.call(this, config);
+function SpellCheckingComments (spellChecker, config) {
+    SpellChecking.call(this, spellChecker, config);
     this.checkingPath = 'Line';
     this.type = 'comment';
 }
@@ -278,4 +288,5 @@ SpellCheckingComments.prototype.errorFor = function (aNode, aResult, aWord) {
  */
 SpellCheckingComments.prototype.filterNode = function (aNode) {
     return SpellChecking.prototype.filterNode.call(this, aNode);
+
 };
