@@ -86,9 +86,6 @@ SpellChecking.prototype.checkOnTree = function (aTree) {
     var self = this;
     var checks = [];
     self.getNodesFromTree(aTree)
-        .filter(function (each) {
-            return self.filterNode(each);
-        })
         .forEach(function (aNode) {
             var words = self.getNodeWords(aNode).split(' ');
             _(words)
@@ -96,7 +93,9 @@ SpellChecking.prototype.checkOnTree = function (aTree) {
                 .forEach(function (aWord) {
                     // Do not check words that do not match the minimum length
                     var aCapitalizedWord = _.capitalize(aWord);
-                    if ((aWord.length >= self.config.minLength) && !self.spell.check(aWord) && !self.spell.check(aCapitalizedWord)) {
+                    if ((aWord.length >= self.config.minLength) &&
+                        !_.includes(self.config.skipWords, aWord) && !self.spell.check(aWord) &&
+                        !_.includes(self.config.skipWords, aCapitalizedWord) && !self.spell.check(aCapitalizedWord)) {
                         checks.push(self.errorFor(aNode, 0, aWord));
                         //self.showErrorFor(aNode, 0, aWord);
                     } else if (!self.config.hideSuccessful) {
@@ -123,7 +122,7 @@ SpellChecking.prototype.getNodeWords = function (aNode) {
  * @return {[String]}   List of words to be check
  */
 SpellChecking.prototype.normalizeWords = function (aWord) {
-    return aWord.replace(/([A-Z])/g, ' $1').replace(/[^a-zA-Z ]/g, ' ').trim().toLowerCase();
+    return String(aWord).replace(/([A-Z])/g, ' $1').replace(/[^a-zA-Z ]/g, ' ').trim().toLowerCase();
 };
 
 /**
